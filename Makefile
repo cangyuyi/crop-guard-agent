@@ -17,7 +17,7 @@ test:
 	$(PY) -m unittest discover -s tests -v
 
 eval:
-	$(PY) tools/run_eval.py --agent $(AGENT)
+	$(PY) tools/run_eval.py --agent $(AGENT) --run-id dev-$(AGENT)
 
 # 留出集：不参与调参。开发集高分必须用这里复核，否则是过拟合。
 eval-holdout:
@@ -27,8 +27,8 @@ eval-holdout:
 compare:
 	@for a in naive rule_based; do \
 	  echo "=== $$a · 开发集 ==="; \
-	  $(PY) tools/run_eval.py --agent $$a >/dev/null; \
-	  $(PY) tools/run_eval.py --agent $$a | tail -7; \
+	  $(PY) tools/run_eval.py --agent $$a --run-id dev-$$a >/dev/null; \
+	  $(PY) tools/run_eval.py --agent $$a --run-id dev-$$a | tail -7; \
 	  echo "=== $$a · 留出集 ==="; \
 	  $(PY) tools/run_eval.py --agent $$a --cases eval/holdout.json --run-id holdout-$$a | tail -7; \
 	  echo; \
