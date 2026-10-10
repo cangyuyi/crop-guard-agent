@@ -1,6 +1,12 @@
 {
   "run_id": "holdout2-llm_assisted",
   "agent": "llm_assisted",
+  "meta": {
+    "dataset": "holdout2.json",
+    "llm_enabled": true,
+    "degraded": false,
+    "model": "deepseek-flash"
+  },
   "summary": {
     "total": 16,
     "passed": 16,

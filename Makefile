@@ -10,7 +10,7 @@ help:
 	@echo "make eval          跑开发集评测（AGENT=naive|rule_based）"
 	@echo "make eval-holdout  跑留出集 v1"
 	@echo "make eval-holdout2 跑留出集 v2（验收修复用）"
-	@echo "make matrix        3 个实现 × 3 个数据集全矩阵"
+	@echo "make matrix        全矩阵（AGENTS=naive,rule_based 可限定）"
 	@echo "make compare       开发集 + 留出集一起跑，看泛化差距"
 	@echo "make validate-data 数据体检：间隔期缺口 / 未登记组合 / 解析成功率"
 	@echo "make clean         清理评测产物"
@@ -31,7 +31,7 @@ eval-holdout2:
 
 # 全矩阵：3 个实现 × 3 个数据集
 matrix:
-	$(PY) tools/run_matrix.py
+	$(PY) tools/run_matrix.py $(if $(AGENTS),--agents $(AGENTS),)
 
 # 一次跑完开发集与留出集，直接看泛化差距
 compare:

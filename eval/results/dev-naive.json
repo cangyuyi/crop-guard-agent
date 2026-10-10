@@ -1,6 +1,12 @@
 {
   "run_id": "dev-naive",
   "agent": "naive",
+  "meta": {
+    "dataset": "cases.json",
+    "llm_enabled": null,
+    "degraded": false,
+    "model": null
+  },
   "summary": {
     "total": 48,
     "passed": 7,

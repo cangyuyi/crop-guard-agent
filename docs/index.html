@@ -181,10 +181,19 @@
 <section class="card">
   <h2>这个页面在跑真代码</h2>
   <p class="foot">
-    页面通过 <b>Pyodide</b> 在浏览器里加载并运行本仓库的 <code>src/cropguard/</code>
-    （确定性规则引擎 + 作用域判定），数据读自 <code>data/</code>。
-    不是截图、不是预设结果——你输入什么，规则就跑什么。
-    同一套代码在三份数据集上的评测结果，见仓库 README。
+    页面通过 <b>Pyodide</b> 在浏览器里加载并运行本仓库的 <code>src/cropguard/</code>，
+    数据读自 <code>data/</code>。不是截图、不是预设结果——你输入什么，规则就跑什么。
+  </p>
+  <p class="foot">
+    <b>跑的是哪一个实现：</b>确定性规则实现（<code>rule_based</code>）。
+    依赖模型的那条路径（<code>llm_assisted</code>）需要 API key，无法在浏览器里跑。
+  </p>
+  <p class="foot">
+    <b>因此你可能撞到两次已知的天花板。</b>点「番茄价格今年走势怎么样」会看到它<b>追问而不是拒答</b>——
+    规则实现的域外判定只看词汇，看到「番茄」就判成域内，但它问的是价格。
+    点「柑橘黄龙病」那条，说明里会带一句<b>名录条目尚未核对公告文号</b>的提醒——
+    那是真实的数据缺口，不藏着。
+    这两件事在 <code>llm_assisted</code> 路径上的表现见仓库 README 的三数据集矩阵。
   </p>
 </section>
 </main>

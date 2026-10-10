@@ -1,6 +1,12 @@
 {
   "run_id": "holdout-naive",
   "agent": "naive",
+  "meta": {
+    "dataset": "holdout.json",
+    "llm_enabled": null,
+    "degraded": false,
+    "model": null
+  },
   "summary": {
     "total": 16,
     "passed": 0,
