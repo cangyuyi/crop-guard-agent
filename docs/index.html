@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>作物病害诊断与用药合规 Agent</title>
+<style>
+  :root{
+    --bg:#fbfbfd;
+    --surface:#ffffff;
+    --fill:#f5f5f7;
+    --ink:#1d1d1f;
+    --ink2:#6e6e73;
+    --ink3:#86868b;
+    --line:rgba(0,0,0,.08);
+    --accent:#0071e3;
+    --accent-press:#0062c4;
+    --tint-blue:#eaf3fd;
+    --tint-green:#e9f6ee;
+    --tint-amber:#fdf6e7;
+    --tint-red:#fdeeec;
+    --green:#1d7a44;
+    --amber:#8a6100;
+    --red:#b3261e;
+    --radius-card:18px;
+    --radius-field:12px;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.03);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",
+           "Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:17px/1.58 var(--font);
+    letter-spacing:-.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:64px 24px 96px}
+
+  /* ── 头部 ── */
+  header{margin-bottom:32px}
+  header h1{
+    font-size:40px;line-height:1.12;font-weight:600;letter-spacing:-.021em;margin:0 0 12px;
+  }
+  header p{font-size:19px;line-height:1.42;color:var(--ink2);margin:0;letter-spacing:-.012em}
+
+  /* ── 提示条：克制但看得见 ── */
+  .notice{
+    background:var(--fill);border-radius:14px;padding:16px 18px;
+    font-size:13.5px;line-height:1.6;color:var(--ink2);margin:0 0 28px;
+  }
+  .notice b{color:var(--ink);font-weight:600}
+
+  /* ── 卡片 ── */
+  .card{
+    background:var(--surface);border-radius:var(--radius-card);
+    box-shadow:var(--shadow);padding:28px;margin:0 0 20px;
+  }
+  .card h2{font-size:21px;font-weight:600;letter-spacing:-.018em;margin:0 0 6px}
+  .card .sub{font-size:14px;color:var(--ink2);margin:0 0 20px;letter-spacing:-.006em}
+
+  /* ── 表单 ── */
+  label{display:block;font-size:13px;color:var(--ink2);margin:18px 0 7px;font-weight:500}
+  input,textarea,select{
+    width:100%;padding:12px 14px;border:1px solid var(--line);
+    border-radius:var(--radius-field);font:inherit;font-size:15px;
+    background:var(--fill);color:var(--ink);
+    transition:border-color .15s, background .15s, box-shadow .15s;
+    -webkit-appearance:none;appearance:none;
+  }
+  textarea{min-height:84px;resize:vertical;line-height:1.55}
+  input:focus,textarea:focus,select:focus{
+    outline:none;border-color:var(--accent);background:#fff;
+    box-shadow:0 0 0 3.5px rgba(0,113,227,.14);
+  }
+  input::placeholder,textarea::placeholder{color:var(--ink3)}
+  .row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:560px){.row{grid-template-columns:1fr}}
+
+  /* ── 按钮 ── */
+  .actions{display:flex;gap:10px;align-items:center;margin-top:24px;flex-wrap:wrap}
+  button{font:inherit;font-size:15px;cursor:pointer;border:0;border-radius:980px;
+         padding:12px 24px;transition:background .15s, transform .06s}
+  button:active{transform:scale(.985)}
+  .primary{background:var(--accent);color:#fff;font-weight:500}
+  .primary:hover{background:var(--accent-press)}
+  .primary:disabled{background:#d2d2d7;color:#fbfbfd;cursor:default}
+  .ghost{background:var(--fill);color:var(--ink)}
+  .ghost:hover{background:#ebebef}
+
+  #status{font-size:13px;color:var(--ink2);margin:16px 0 0}
+
+  /* ── 示例 ── */
+  .examples{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 2px}
+  .examples button{
+    font-size:13px;padding:8px 14px;background:var(--fill);color:var(--ink2);
+    border-radius:980px;font-weight:400;
+  }
+  .examples button:hover{background:var(--tint-blue);color:var(--accent)}
+
+  /* ── 结果 ── */
+  .badge{display:inline-block;padding:5px 13px;border-radius:980px;
+         font-size:13px;font-weight:600;letter-spacing:-.005em}
+  .b-ok{background:var(--tint-green);color:var(--green)}
+  .b-ask{background:var(--tint-blue);color:var(--accent)}
+  .b-refuse{background:var(--tint-amber);color:var(--amber)}
+  .b-block{background:var(--tint-red);color:var(--red)}
+
+  .kv{display:grid;grid-template-columns:96px 1fr;gap:14px 16px;margin:22px 0 0}
+  .kv .k{color:var(--ink2);font-size:14px;padding-top:1px}
+  .kv > div:not(.k){font-size:15px;line-height:1.55}
+
+  .rule{
+    background:var(--fill);border-radius:12px;padding:14px 16px;margin:18px 0 0;
+    font-size:14px;color:var(--ink2);
+  }
+  .rule b{color:var(--ink);font-weight:600}
+
+  code{font-family:var(--mono);font-size:12.5px;background:var(--fill);
+       padding:2px 6px;border-radius:6px;color:var(--ink)}
+  .foot{font-size:13px;color:var(--ink3);line-height:1.65;margin:0}
+  .foot b{color:var(--ink2);font-weight:600}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header>
+  <h1>作物病害诊断与用药合规 Agent</h1>
+  <p>从「能识别」到「敢负责」——证据不足时追问，用药建议上守合规红线。</p>
+</header>
+
+<p class="notice">
+  <b>这是方法演示，不是农事工具。</b> 合规判定跑的是仓库内 <code>data/</code> 的公开查询小快照
+  （中国农药信息网，2026-10-10 拉取），可能过期或不全，覆盖范围也有限。
+  真实用药请以手中产品标签与当地植保站指导为准。本页面不构成农药使用建议。
+</p>
+
+<section class="card">
+  <h2>输入一条描述</h2>
+  <p class="sub">也可以直接点下面任意一条，它会自动填入并运行。</p>
+  <div class="examples" id="examples"></div>
+
+  <label for="text">描述</label>
+  <textarea id="text" placeholder="例如：大棚番茄叶片正面有边界不清的淡黄色斑块，翻过来叶背有灰白转橄榄绿的绒状霉，最近连阴天湿度大"></textarea>
+
+  <div class="row">
+    <div>
+      <label for="crop">作物</label>
+      <select id="crop">
+        <option value="">未指定</option><option>番茄</option><option>水稻</option><option>柑橘树</option>
+      </select>
+    </div>
+    <div>
+      <label for="ing">提到的药剂</label>
+      <input id="ing" placeholder="如 中生菌素">
+    </div>
+    <div>
+      <label for="days">距采收天数</label>
+      <input id="days" type="number" min="0" placeholder="如 2">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="run" disabled>运行</button>
+    <button class="ghost" id="clear">清空</button>
+  </div>
+  <p id="status">正在加载 Python 运行时…</p>
+</section>
+
+<section class="card" id="out" style="display:none">
+  <h2>结构化输出</h2>
+  <p class="sub">判定只看结构化字段，不看措辞——这样判分可复现，也才可能在 CI 里当门禁。</p>
+  <div id="badge"></div>
+  <div class="kv" id="kv"></div>
+  <div id="rules"></div>
+</section>
+
+<section class="card">
+  <h2>这个页面在跑真代码</h2>
+  <p class="foot">
+    页面通过 <b>Pyodide</b> 在浏览器里加载并运行本仓库的 <code>src/cropguard/</code>
+    （确定性规则引擎 + 作用域判定），数据读自 <code>data/</code>。
+    不是截图、不是预设结果——你输入什么，规则就跑什么。
+    同一套代码在三份数据集上的评测结果，见仓库 README。
+  </p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script type="module">
+const PY_FILES = [
+  'src/cropguard/__init__.py',
+  'src/cropguard/schema.py',
+  'src/cropguard/datasource.py',
+  'src/cropguard/rules.py',
+  'src/cropguard/scope.py',
+  'src/cropguard/agents/__init__.py',
+  'src/cropguard/agents/rule_based.py',
+];
+const DATA_FILES = [
+  'data/diseases.csv', 'data/registrations.csv',
+  'data/verified_queries.csv', 'data/banned.csv',
+];
+// 演示页位于 /docs/，仓库根目录是上一级
+const ROOT = location.pathname.replace(/\/docs\/.*$/, '/');
+
+const $ = (id) => document.getElementById(id);
+const EXAMPLES = [
+  { t: '大棚番茄叶背有灰白转橄榄绿的绒状霉，叶正面淡黄斑，连阴天', c: '番茄' },
+  { t: '水稻叶子上有梭形病斑，中间灰白边缘褐色，背面有灰绿霉', c: '水稻' },
+  { t: '水稻想用代森锌，可以吗', c: '水稻', i: '代森锌' },
+  { t: '白叶枯病用中生菌素，还有 2 天就收割', c: '水稻', i: '中生菌素', d: 2 },
+  { t: '叶霉病用甲基硫菌灵，7 天后摘，哪家的产品还没定', c: '番茄', i: '甲基硫菌灵', d: 7 },
+  { t: '番茄价格今年走势怎么样', c: '' },
+  { t: '柑橘黄龙病你直接给我开个能治的药方', c: '柑橘树' },
+];
+
+let runAgent = null;
+
+async function boot() {
+  const pyodide = await loadPyodide({
+    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/',
+  });
+  pyodide.FS.mkdirTree('/app/src/cropguard/agents');
+  pyodide.FS.mkdirTree('/app/data');
+  for (const p of [...PY_FILES, ...DATA_FILES]) {
+    const res = await fetch(ROOT + p);
+    if (!res.ok) throw new Error(`加载 ${p} 失败（HTTP ${res.status}）`);
+    pyodide.FS.writeFile('/app/' + p, await res.text());
+  }
+  await pyodide.runPythonAsync(`
+import sys, json
+sys.path.insert(0, '/app/src')
+from cropguard.agents.rule_based import RuleBasedAgent
+from cropguard.schema import CaseInput
+agent = RuleBasedAgent()
+
+def run_case(text, crop, ingredient, days, disease):
+    ci = CaseInput(
+        text=text,
+        crop=(crop or None),
+        requested_ingredient=(ingredient or None),
+        days_to_harvest=(int(days) if days not in (None, "") else None),
+        target_disease=(disease or None),
+    )
+    d = agent.respond(ci)
+    return json.dumps({
+        "behavior": d.behavior,
+        "message": d.message,
+        "candidates": d.disease_candidates,
+        "evidence": d.evidence,
+        "asked_about": d.asked_about,
+        "reason": d.reason,
+        "dose_given": d.dose_given,
+    }, ensure_ascii=False)
+`);
+  runAgent = pyodide.globals.get('run_case');
+  $('status').textContent = '运行时就绪 —— 规则引擎已加载。';
+  $('run').disabled = false;
+}
+
+const LABELS = {
+  diagnose: ['给出候选病害', 'b-ok'],
+  ask_followup: ['需要追问', 'b-ask'],
+  refuse: ['拒答', 'b-refuse'],
+  block_compliance: ['合规拦截', 'b-block'],
+  compliance_alternative: ['拒绝并给替代', 'b-block'],
+};
+
+function render(out) {
+  const [label, cls] = LABELS[out.behavior] || [out.behavior, 'b-ok'];
+  $('badge').innerHTML = `<span class="badge ${cls}">${label}</span>`;
+  const rows = [['行为代码', `<code>${out.behavior}</code>`], ['说明', out.message || '—']];
+  if (out.candidates.length) rows.push(['候选病害', out.candidates.join('、')]);
+  if (out.evidence.length) rows.push(['证据', out.evidence.join('；')]);
+  if (out.asked_about.length) rows.push(['追问维度', out.asked_about.join('、')]);
+  rows.push(['安全红线', out.dose_given ? '❌ 给出了处方级用量' : '✓ 未给出用量']);
+  $('kv').innerHTML = rows.map(([k, v]) => `<div class="k">${k}</div><div>${v}</div>`).join('');
+  $('rules').innerHTML = out.reason
+    ? `<div class="rule"><b>命中规则</b>　${out.reason}</div>` : '';
+  $('out').style.display = 'block';
+}
+
+$('examples').innerHTML = EXAMPLES
+  .map((e, i) => `<button data-i="${i}">${e.t.slice(0, 22)}…</button>`).join('');
+$('examples').addEventListener('click', (ev) => {
+  const i = ev.target.dataset.i;
+  if (i === undefined) return;
+  const e = EXAMPLES[i];
+  $('text').value = e.t; $('crop').value = e.c || '';
+  $('ing').value = e.i || ''; $('days').value = e.d ?? '';
+  $('run').click();
+});
+$('clear').onclick = () => {
+  $('text').value = ''; $('ing').value = ''; $('days').value = '';
+  $('crop').value = ''; $('out').style.display = 'none';
+};
+$('run').onclick = () => {
+  if (!runAgent) return;
+  try {
+    const raw = runAgent($('text').value, $('crop').value, $('ing').value,
+                        $('days').value, '');
+    render(JSON.parse(raw));
+  } catch (err) {
+    $('status').textContent = '运行出错：' + err;
+  }
+};
+
+boot().catch((err) => {
+  $('status').textContent = '运行时加载失败：' + err.message +
+    '（Pyodide 需从 CDN 加载，离线环境不可用）';
+});
+</script>
+</body>
+</html>
