@@ -92,18 +92,46 @@ class LlmAssistedAgent:
         # 闸门 3：模型候选必须能在知识表里找到，否则丢弃
         grounded = self._ground(reading, case_input.crop)
 
-        if reading.asked_about or not grounded:
-            a = reading.asked_about or ["部位", "颜色", "形状", "叶背"]
-            return Decision(behavior="ask_followup",
-                            message="现有信息不足以区分病害，请补充以下维度。",
-                            asked_about=a)
+        # 有可用候选就诊断；**不能因为模型顺手给了追问维度就改问**。
+        # （早先写成 `if reading.asked_about or not grounded`，导致模型同时给出
+        #  候选与追问维度时永远不诊断——这是开发集暴露出来的集成 bug。）
+        if grounded:
+            return Decision(
+                behavior="diagnose",
+                message=f"最可能是候选首位：{grounded[0]}。请结合田间情况核对。",
+                disease_candidates=grounded,
+                evidence=reading.evidence[:3] or [f"{grounded[0]}：按模型解读的症状证据"],
+            )
 
-        return Decision(
-            behavior="diagnose",
-            message=f"最可能是候选首位：{grounded[0]}。请结合田间情况核对。",
-            disease_candidates=grounded,
-            evidence=reading.evidence[:3] or [f"{grounded[0]}：按模型解读的症状证据"],
-        )
+        # 没有可用候选 → 追问；维度用模型给的，为空则回落到固定词表
+        return Decision(behavior="ask_followup",
+                        message="现有信息不足以区分病害，请补充以下维度。",
+                        asked_about=self._normalize_asked(reading.asked_about))
+
+    # 评测与前端约定的判别维度词表。模型输出的自由措辞需归一到这套词，
+    # 否则下游无法判定"到底问清了没有"。
+    _DIM_VOCAB = {
+        "部位": ("部位", "位置", "哪个部位", "叶片", "果实", "茎", "根", "穗", "叶鞘", "枝梢"),
+        "颜色": ("颜色", "色泽", "色彩", "什么色"),
+        "形状": ("形状", "形态", "病斑", "斑形", "轮纹", "云纹", "形状"),
+        "叶背": ("叶背", "背面", "叶背面"),
+        "条件": ("条件", "环境", "湿度", "温度", "天气", "棚内", "管理", "栽培", "生育期"),
+    }
+
+    @classmethod
+    def _normalize_asked(cls, asked: List[str]) -> List[str]:
+        """把模型的自由措辞归一成约定词表。
+
+        归一到固定词表不是"迁就评测"，而是**接口契约**：下游要据它判断
+        "是否问清了判别所必需的信息"，自由措辞无法判定。
+        """
+        out: List[str] = []
+        for raw in asked:
+            text = str(raw)
+            for dim, keys in cls._DIM_VOCAB.items():
+                if any(k in text for k in keys) and dim not in out:
+                    out.append(dim)
+        return out or ["部位", "颜色", "形状", "叶背"]
 
     # ---------- 内部 ----------
 
