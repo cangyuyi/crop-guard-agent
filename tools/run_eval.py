@@ -174,9 +174,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--agent", default="naive", help=f"被测实现（可选：{', '.join(available())}）")
     ap.add_argument("--run-id", default=None)
+    ap.add_argument("--cases", default=None,
+                    help="用例文件（默认 eval/cases.json；留出集见 eval/holdout.json）")
     args = ap.parse_args()
 
-    payload = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+    cases_path = Path(args.cases) if args.cases else CASES_PATH
+    payload = json.loads(cases_path.read_text(encoding="utf-8"))
     agent = build(args.agent)
     run_id = args.run_id or f"{args.agent}-{datetime.now():%Y%m%d-%H%M%S}"
 
@@ -188,6 +191,8 @@ def main() -> int:
             crop=case.get("crop"),
             days_to_harvest=s.get("days_to_harvest"),
             requested_ingredient=s.get("requested_ingredient"),
+            requested_reg_id=s.get("requested_reg_id"),
+            target_disease=s.get("target_disease"),
         )
         rows.append(score_case(case, agent.respond(ci)))
 
