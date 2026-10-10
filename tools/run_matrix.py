@@ -11,6 +11,8 @@
 
 import argparse
 import json
+import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +22,8 @@ RESULTS = ROOT / "eval" / "results"
 sys.path.insert(0, str(ROOT / "src"))
 
 from cropguard.agents import build  # noqa: E402
+sys.path.insert(0, str(ROOT / "tools"))
+from run_eval import plan_run_id  # noqa: E402
 
 DATASETS = [
     ("dev", ROOT / "eval" / "cases.json", "开发集（用例与实现同源，分数会偏高）"),
@@ -38,21 +42,17 @@ METRICS = [
 
 
 def plan(agent_name: str, base_id: str):
-    """算出 run_eval 会写入的文件名，并回报是否降级。
-
-    与 run_eval 用同一套判断逻辑，避免两处不一致。
-    """
-    agent = build(agent_name)
-    enabled = getattr(agent, "llm_enabled", None)
-    degraded = bool(getattr(agent, "requires_llm", False)) and not enabled
-    return (base_id + "-degraded" if degraded else base_id), degraded
+    """复用 run_eval 的命名规则，保证两处算出的文件名一致。"""
+    return plan_run_id(build(agent_name), base_id)
 
 
 def run(agent: str, tag: str, cases: Path):
     run_id, degraded = plan(agent, f"{tag}-{agent}")
-    subprocess.run([sys.executable, str(ROOT / "tools" / "run_eval.py"),
-                    "--agent", agent, "--cases", str(cases), "--run-id", run_id],
-                   check=True, capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, str(ROOT / "tools" / "run_eval.py"),
+                           "--agent", agent, "--cases", str(cases), "--run-id", run_id],
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise SystemExit(f"✗ {tag}/{agent} 运行失败（退出码 {proc.returncode}）：\n{proc.stdout.strip()}")
     payload = json.loads((RESULTS / f"{run_id}.json").read_text(encoding="utf-8"))
     return payload["summary"], degraded, run_id
 

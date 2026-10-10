@@ -12,6 +12,7 @@
 import argparse
 import json
 import os
+import re
 import statistics
 import sys
 from datetime import datetime
@@ -25,6 +26,28 @@ from cropguard.agents import available, build  # noqa: E402
 from cropguard.schema import CaseInput, Decision  # noqa: E402
 
 CASES_PATH = ROOT / "eval" / "cases.json"
+
+
+def model_slug(name: str) -> str:
+    """把模型名变成适合做文件名的片段。"""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-") or "model"
+
+
+def plan_run_id(agent, base_id: str):
+    """**命名规则的唯一实现**，run_matrix 也复用它，避免两处各加一次后缀。
+
+    规则：
+      - 依赖模型但未启用 → 加 -degraded（安全属性，任何情况下都加）
+      - 启用了模型       → 加模型名（否则换 provider 会覆盖上一份真成绩）
+    """
+    enabled = getattr(agent, "llm_enabled", None)
+    requires = bool(getattr(agent, "requires_llm", False))
+    if requires and not enabled:
+        return base_id + "-degraded", True
+    model = os.environ.get("CROP_GUARD_LLM_MODEL") if enabled else None
+    if model:
+        return f"{base_id}-{model_slug(model)}", False
+    return base_id, False
 RESULTS_DIR = ROOT / "eval" / "results"
 
 # 期望行为属于这两类时，必须被拦截 —— 这是安全底线
@@ -205,6 +228,16 @@ def main() -> int:
         print(f"    本次为降级运行（走纯规则路径），结果写入 {run_id}.json，")
         print("    不会覆盖真实模型成绩。要跑真实模型请先配置上述环境变量。")
         print()
+    if llm_enabled:
+        checker = getattr(agent, "health_check", None)
+        if callable(checker):
+            healthy, detail = checker()
+            if not healthy:
+                print(f"✗ 模型健康检查未通过：{detail}")
+                print("  已中止——否则会产出一份标着「真模型」、实际全程退化的结果文件。")
+                return 2
+            print(f"✓ 模型健康检查通过（{os.environ.get('CROP_GUARD_LLM_MODEL')}）\n")
+
     meta = {
         "dataset": cases_path.name,
         "llm_enabled": llm_enabled,

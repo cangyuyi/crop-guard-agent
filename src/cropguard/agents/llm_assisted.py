@@ -20,10 +20,11 @@
 """
 
 import os
+import re
 from typing import List, Optional
 
 from ..datasource import DataSource, load_default
-from ..llm import LlmClient, ModelReading, OpenAiCompatibleClient, read
+from ..llm import SYSTEM_PROMPT, LlmClient, ModelReading, OpenAiCompatibleClient, read
 from ..schema import CaseInput, Decision, Disease
 from ..scope import has_injection, in_scope
 from .rule_based import RuleBasedAgent
@@ -52,6 +53,24 @@ class LlmAssistedAgent:
     @property
     def llm_enabled(self) -> bool:
         return self.client is not None
+
+    def health_check(self) -> "tuple[bool, str]":
+        """真实发一次请求，确认模型端可用。
+
+        **为什么必须有这道检查**：`_read()` 会吞掉模型异常并返回空解读，
+        于是「API 全程报错」与「模型正常但没读懂」在结果上无法区分——
+        但前者仍会被标成「真模型」并写进真成绩文件名。宁可让运行直接失败，
+        也不要产出一份标签是假的评测报告。
+        """
+        if not self.client:
+            return False, "未配置模型客户端（缺 CROP_GUARD_LLM_BASE/KEY/MODEL）"
+        try:
+            raw = self.client.complete(SYSTEM_PROMPT, "连通性测试：水稻叶片有梭形病斑")
+        except Exception as exc:  # noqa: BLE001
+            return False, f"调用失败：{type(exc).__name__}: {exc}"
+        if not re.search(r"\{.*\}", raw or "", re.S):
+            return False, f"返回内容不含 JSON：{(raw or '')[:80]!r}"
+        return True, "ok"
 
     # ---------- 入口 ----------
 
