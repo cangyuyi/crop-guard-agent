@@ -31,6 +31,9 @@ from .rule_based import RuleBasedAgent
 
 class LlmAssistedAgent:
     name = "llm_assisted"
+    # 声明「依赖模型」：未配置 key 时 run_eval 会把结果标为 -degraded，
+    # 避免降级数字被误当成该实现的成绩。
+    requires_llm = True
 
     def __init__(self, ds: Optional[DataSource] = None,
                  client: Optional[LlmClient] = None,
@@ -113,7 +116,7 @@ class LlmAssistedAgent:
     _DIM_VOCAB = {
         "部位": ("部位", "位置", "哪个部位", "叶片", "果实", "茎", "根", "穗", "叶鞘", "枝梢"),
         "颜色": ("颜色", "色泽", "色彩", "什么色"),
-        "形状": ("形状", "形态", "病斑", "斑形", "轮纹", "云纹", "形状"),
+        "形状": ("形状", "形态", "病斑", "斑形", "轮纹", "云纹"),
         "叶背": ("叶背", "背面", "叶背面"),
         "条件": ("条件", "环境", "湿度", "温度", "天气", "棚内", "管理", "栽培", "生育期"),
     }

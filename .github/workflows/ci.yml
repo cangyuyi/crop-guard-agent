@@ -42,8 +42,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: 跑全矩阵
-        run: make matrix | tee matrix.txt
+      - name: 跑确定性实现的矩阵
+        # 故意不跑 llm_assisted：CI 里没有模型凭据，跑了只会得到降级结果，
+        # 上传成产物反而误导读者。覆盖率让位给「产物必须可信」。
+        run: make matrix AGENTS=naive,rule_based | tee matrix.txt
 
       - name: 门禁校验
         run: python3 tools/check_gate.py

@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """评测矩阵：所有实现 × 所有数据集，一次跑完并输出对照表。
 
-用法：python3 tools/run_matrix.py
+用法：
+    python3 tools/run_matrix.py                     # 全部实现
+    python3 tools/run_matrix.py --agents naive,rule_based   # 只跑确定性实现（CI 用）
+
+**降级保护**：依赖模型的实现若未配置 CROP_GUARD_LLM_*，其结果会写入
+`<tag>-<agent>-degraded.json`，绝不覆盖真实模型成绩；本表也会把它标为「降级」。
 """
 
+import argparse
 import json
 import subprocess
 import sys
@@ -11,13 +17,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "eval" / "results"
+sys.path.insert(0, str(ROOT / "src"))
+
+from cropguard.agents import build  # noqa: E402
 
 DATASETS = [
     ("dev", ROOT / "eval" / "cases.json", "开发集（用例与实现同源，分数会偏高）"),
     ("holdout", ROOT / "eval" / "holdout.json", "留出集 v1（已用于发现问题，不再充当验收）"),
-    ("holdout2", ROOT / "eval" / "holdout2.json", "留出集 v2（用于验收 W3 修复）"),
+    ("holdout2", ROOT / "eval" / "holdout2.json", "留出集 v2"),
 ]
-AGENTS = ["naive", "rule_based", "llm_assisted"]
+ALL_AGENTS = ["naive", "rule_based", "llm_assisted"]
 METRICS = [
     ("pass_rate", "总通过率"),
     ("safety_block_recall", "合规拦截召回率"),
@@ -28,42 +37,65 @@ METRICS = [
 ]
 
 
+def plan(agent_name: str, base_id: str):
+    """算出 run_eval 会写入的文件名，并回报是否降级。
+
+    与 run_eval 用同一套判断逻辑，避免两处不一致。
+    """
+    agent = build(agent_name)
+    enabled = getattr(agent, "llm_enabled", None)
+    degraded = bool(getattr(agent, "requires_llm", False)) and not enabled
+    return (base_id + "-degraded" if degraded else base_id), degraded
+
+
 def run(agent: str, tag: str, cases: Path):
-    run_id = f"{tag}-{agent}"
+    run_id, degraded = plan(agent, f"{tag}-{agent}")
     subprocess.run([sys.executable, str(ROOT / "tools" / "run_eval.py"),
                     "--agent", agent, "--cases", str(cases), "--run-id", run_id],
                    check=True, capture_output=True, text=True)
-    return json.loads((RESULTS / f"{run_id}.json").read_text(encoding="utf-8"))
+    payload = json.loads((RESULTS / f"{run_id}.json").read_text(encoding="utf-8"))
+    return payload["summary"], degraded, run_id
 
 
 def fmt(v):
-    if v is None:
-        return "—"
-    return f"{v:g}"
+    return "—" if v is None else f"{v:g}"
 
 
 def main() -> int:
-    data = {}
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--agents", default=",".join(ALL_AGENTS),
+                    help="逗号分隔的实现列表（默认全部）")
+    args = ap.parse_args()
+    agents = [a.strip() for a in args.agents.split(",") if a.strip()]
+
+    data, notes = {}, {}
     for tag, path, _label in DATASETS:
-        for agent in AGENTS:
-            data[(tag, agent)] = run(agent, tag, path)["summary"]
+        for agent in agents:
+            s, degraded, run_id = run(agent, tag, path)
+            data[(tag, agent)] = s
+            if degraded:
+                notes[(tag, agent)] = run_id
 
     for tag, _path, label in DATASETS:
         print(f"\n## {tag}  —  {label}\n")
-        header = "| 指标 | " + " | ".join(AGENTS) + " |"
-        print(header)
-        print("| --- | " + " | ".join("---" for _ in AGENTS) + " |")
+        print("| 指标 | " + " | ".join(agents) + " |")
+        print("| --- | " + " | ".join("---" for _ in agents) + " |")
         for key, name in METRICS:
-            row = " | ".join(fmt(data[(tag, a)].get(key)) for a in AGENTS)
-            print(f"| {name} | {row} |")
+            print(f"| {name} | " + " | ".join(fmt(data[(tag, a)].get(key)) for a in agents) + " |")
 
-    print("\n### 泛化差距（rule_based：开发集 → 留出集 v2）\n")
-    dev = data[("dev", "rule_based")]
-    h2 = data[("holdout2", "rule_based")]
-    for key, name in METRICS:
-        d, h = dev.get(key), h2.get(key)
-        if isinstance(d, (int, float)) and isinstance(h, (int, float)):
-            print(f"  {name}: {d:g} → {h:g}  （{h - d:+g}）")
+    if notes:
+        print("\n⚠️ 以下结果为**降级运行**（依赖模型但未配置 CROP_GUARD_LLM_*），")
+        print("   数字等同于纯规则路径，**不代表该实现的表现**：")
+        for (tag, agent), run_id in sorted(notes.items()):
+            print(f"   - {tag}/{agent} → eval/results/{run_id}.json")
+
+    if "rule_based" in agents:
+        print("\n### 泛化差距（rule_based：开发集 → 留出集 v2）\n")
+        dev, h2 = data[("dev", "rule_based")], data[("holdout2", "rule_based")]
+        for key, name in METRICS:
+            d, h = dev.get(key), h2.get(key)
+            if isinstance(d, (int, float)) and isinstance(h, (int, float)):
+                print(f"  {name}: {d:g} → {h:g}  （{h - d:+g}）")
     return 0
 
 

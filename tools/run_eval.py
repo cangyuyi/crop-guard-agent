@@ -11,6 +11,7 @@
 
 import argparse
 import json
+import os
 import statistics
 import sys
 from datetime import datetime
@@ -126,22 +127,32 @@ def summarize(rows: List[dict]) -> Dict[str, object]:
     }
 
 
-def write_report(run_id: str, agent_name: str, rows: List[dict], summary: Dict[str, object]) -> None:
+def write_report(run_id: str, agent_name: str, rows: List[dict],
+                 summary: Dict[str, object], meta: Optional[Dict[str, object]] = None) -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     (RESULTS_DIR / f"{run_id}.json").write_text(
-        json.dumps({"run_id": run_id, "agent": agent_name, "summary": summary, "cases": rows},
+        json.dumps({"run_id": run_id, "agent": agent_name, "meta": meta or {},
+                    "summary": summary, "cases": rows},
                    ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     by_cat: Dict[str, List[dict]] = {}
     for r in rows:
         by_cat.setdefault(r["category"], []).append(r)
 
+    degraded = bool((meta or {}).get("degraded"))
     lines = [
         f"# 评测报告 `{run_id}`",
         "",
         f"- 被测实现：`{agent_name}`",
         f"- 用例总数：{summary['total']}",
-        "",
+    ]
+    if degraded:
+        lines += ["",
+                  "> ⚠️ **本次为降级运行**：该实现依赖模型但未配置 `CROP_GUARD_LLM_*`，",
+                  "> 已回落到纯规则路径。**这份数字不代表该实现的表现。**"]
+    elif (meta or {}).get("llm_enabled"):
+        lines += ["", f"- 模型已启用：`{meta.get('model') or '已配置'}`"]
+    lines += [
         "| 指标 | 值 |",
         "| --- | --- |",
         f"| 总通过率 | {summary['pass_rate']} |",
@@ -183,6 +194,24 @@ def main() -> int:
     agent = build(args.agent)
     run_id = args.run_id or f"{args.agent}-{datetime.now():%Y%m%d-%H%M%S}"
 
+    # ── 来源标记：降级运行绝不允许占用真实成绩的文件名 ──
+    # 早先没有这道闸，导致任何人跑一次 make matrix（无 key）就会把真实模型成绩
+    # 静默覆盖成降级数字，而结果文件里看不出区别——文档数字就此变成假的。
+    llm_enabled = getattr(agent, "llm_enabled", None)
+    degraded = bool(getattr(agent, "requires_llm", False)) and not llm_enabled
+    if degraded:
+        run_id += "-degraded"
+        print("⚠️  该实现依赖模型，但未配置 CROP_GUARD_LLM_BASE/KEY/MODEL。")
+        print(f"    本次为降级运行（走纯规则路径），结果写入 {run_id}.json，")
+        print("    不会覆盖真实模型成绩。要跑真实模型请先配置上述环境变量。")
+        print()
+    meta = {
+        "dataset": cases_path.name,
+        "llm_enabled": llm_enabled,
+        "degraded": degraded,
+        "model": os.environ.get("CROP_GUARD_LLM_MODEL") if llm_enabled else None,
+    }
+
     rows = []
     for case in payload["cases"]:
         s = case.get("structured", {}) or {}
@@ -197,7 +226,7 @@ def main() -> int:
         rows.append(score_case(case, agent.respond(ci)))
 
     summary = summarize(rows)
-    write_report(run_id, args.agent, rows, summary)
+    write_report(run_id, args.agent, rows, summary, meta)
 
     print(f"用例 {summary['total']} 条，通过 {summary['passed']} 条（{summary['pass_rate']}）")
     print(f"  合规拦截召回率 : {summary['safety_block_recall']}   ← 安全底线，目标 100%")
