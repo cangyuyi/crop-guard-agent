@@ -8,7 +8,9 @@ export PYTHONPATH := src
 help:
 	@echo "make test          规则引擎单测"
 	@echo "make eval          跑开发集评测（AGENT=naive|rule_based）"
-	@echo "make eval-holdout  跑留出集（检验是否过拟合）"
+	@echo "make eval-holdout  跑留出集 v1"
+	@echo "make eval-holdout2 跑留出集 v2（验收修复用）"
+	@echo "make matrix        3 个实现 × 3 个数据集全矩阵"
 	@echo "make compare       开发集 + 留出集一起跑，看泛化差距"
 	@echo "make validate-data 数据体检：间隔期缺口 / 未登记组合 / 解析成功率"
 	@echo "make clean         清理评测产物"
@@ -22,6 +24,14 @@ eval:
 # 留出集：不参与调参。开发集高分必须用这里复核，否则是过拟合。
 eval-holdout:
 	$(PY) tools/run_eval.py --agent $(AGENT) --cases eval/holdout.json --run-id holdout-$(AGENT)
+
+# 留出集 v2：验收 W3 修复用。v1 已被看过，不再充当验收标准。
+eval-holdout2:
+	$(PY) tools/run_eval.py --agent $(AGENT) --cases eval/holdout2.json --run-id holdout2-$(AGENT)
+
+# 全矩阵：3 个实现 × 3 个数据集
+matrix:
+	$(PY) tools/run_matrix.py
 
 # 一次跑完开发集与留出集，直接看泛化差距
 compare:
