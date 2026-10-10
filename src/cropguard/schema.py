@@ -9,11 +9,11 @@ from typing import List, Optional
 
 # 六种期望行为，与 eval/cases.json 的 meta.behaviors 一致
 BEHAVIORS = (
-    "diagnose",              # 给出候选病害（含证据与置信度）
-    "ask_followup",          # 证据不足，必须追问
-    "refuse",                # 无法判断，明确拒答
-    "block_compliance",      # 药剂不合规，拦截并说明原因
-    "compliance_alternative",# 拒绝该方案并给出合规替代方向
+    "diagnose",               # 给出候选病害（含证据与置信度）
+    "ask_followup",           # 证据不足，必须追问
+    "refuse",                 # 无法判断，明确拒答
+    "block_compliance",       # 药剂不合规，拦截并说明原因
+    "compliance_alternative", # 拒绝该方案并给出合规替代方向
 )
 
 
@@ -30,17 +30,28 @@ class Disease:
 
 @dataclass(frozen=True)
 class Registration:
+    """一条农药登记记录。
+
+    PHI 是**按登记证号**存在的，不是按有效成分——实测同一成分（甲基硫菌灵）
+    在番茄上有 3 天与 7 天两个值。所以判间隔期必须落到产品粒度。
+    """
+
     reg_id: str
+    product_name: str
     active_ingredient: str
+    content: str
     crop: str
     target_disease: str
-    dilution: str
-    phi_days: int
+    phi_days: Optional[int]          # None = 标签未抽取到，不等于安全
+    phi_status: str                  # 已抽取 / 未抽取
     source: str
+    fetched_at: str
+    dose: str = ""
+    method: str = ""
 
     @property
-    def is_fixture(self) -> bool:
-        return self.reg_id.startswith("FIXTURE-")
+    def phi_known(self) -> bool:
+        return self.phi_days is not None
 
 
 @dataclass(frozen=True)
@@ -49,6 +60,29 @@ class BannedEntry:
     status: str  # banned | restricted
     note: str
     source: str
+
+
+@dataclass(frozen=True)
+class VerifiedQuery:
+    """官方登记查询的验证台账：(作物, 有效成分[, 防治对象]) 的查询结果。
+
+    来自 data/verified_queries.csv，每行带查询日期，可用
+    tools/fetch_registrations.py 重新跑一次核对。
+
+    `target_disease` 为空表示只按作物查（用于 R1）；
+    非空表示精确到防治对象（用于 R2）。**查询返回 0 条 = 官方系统里确实没有**，
+    这是「未登记」判定的唯一依据——不靠推导、不靠猜测。
+    """
+
+    crop: str
+    active_ingredient: str
+    target_disease: str
+    registered: bool
+    hits: int
+
+    @property
+    def is_crop_level(self) -> bool:
+        return not self.target_disease.strip()
 
 
 @dataclass
@@ -60,6 +94,8 @@ class CaseInput:
     image: Optional[str] = None
     days_to_harvest: Optional[int] = None
     requested_ingredient: Optional[str] = None
+    requested_reg_id: Optional[str] = None
+    target_disease: Optional[str] = None
 
 
 @dataclass
