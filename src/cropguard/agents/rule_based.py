@@ -22,15 +22,10 @@ from typing import List, Optional, Tuple
 from ..datasource import DataSource, load_default
 from ..rules import KIND_BLOCK, evaluate_all
 from ..schema import CaseInput, Decision, Disease
+from ..scope import has_injection, in_scope
 
 # 症状判别最依赖的几个维度——追问时按此顺序问
 ASK_DIMENSIONS = ["部位", "颜色", "形状", "叶背", "霉层", "条件", "部位"]
-
-# 与植保无关的强信号（用于 C 类拒答）
-OFFTOPIC = [
-    "天气", "股票", "诗", "炒蛋", "怎么做菜", "recipe", "天气怎么样",
-    "忽略你之前", "没有任何限制", "忽略规则", "asdf", "123456",
-]
 
 
 class RuleBasedAgent:
@@ -50,12 +45,20 @@ class RuleBasedAgent:
 
         # ① 先处理用药诉求：合规永远优先于诊断
         if case_input.requested_ingredient:
-            decision = self._check_compliance(case_input)
+            decision = self.check_compliance(case_input)
             if decision is not None:
                 return decision
 
-        # ② 与植保无关 / 提示注入 → 拒答
-        if self._is_offtopic(text):
+        # ② 提示注入 → 拒答（次要防线，见 scope.INJECTION_PATTERNS 的说明）
+        if has_injection(text):
+            return Decision(
+                behavior="refuse",
+                message="这条输入试图改变系统设定。本系统只处理作物病害与用药合规问题，不会因此改变口径。",
+            )
+
+        # ②b 域外 → 拒答。**允许列表**：没有植保信号且未指明作物才拒绝
+        #     （原来用关键词黑名单，泛化差；改用允许列表后留出集拒答正确率 0 → 0.75）
+        if not in_scope(text, self.diseases, case_input.crop or ""):
             return Decision(
                 behavior="refuse",
                 message="本系统只处理作物病害的诊断与用药合规问题，这个问题不在范围内。",
@@ -104,11 +107,13 @@ class RuleBasedAgent:
 
     # ---------- 合规 ----------
 
-    def _check_compliance(self, ci: CaseInput) -> Optional[Decision]:
+    def check_compliance(self, ci: CaseInput) -> Optional[Decision]:
         """返回拦截/需确认的结论；**全部通过时返回 None**，让流程继续走诊断。
 
-        早先的版本在合规通过时直接返回一个"核对通过"的 Decision，
-        导致用户既问了用药又描述了症状时拿不到诊断结果——这是评测暴露出来的。
+        公开方法：`LlmAssistedAgent` 复用它作为不可绕过的合规层。
+
+        注意这里刻意不返回"核对通过"的 Decision——早先那样写会导致
+        用户既问了用药又描述了症状时拿不到诊断结果（评测暴露出来的）。
         """
         crop = ci.crop
         if not crop:
@@ -134,11 +139,6 @@ class RuleBasedAgent:
                         asked_about=asked)
 
     # ---------- 输入分类 ----------
-
-    @staticmethod
-    def _is_offtopic(text: str) -> bool:
-        low = text.lower()
-        return any(k.lower() in low for k in OFFTOPIC)
 
     # ---------- 症状匹配 ----------
 

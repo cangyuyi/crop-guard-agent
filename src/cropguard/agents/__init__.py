@@ -18,6 +18,7 @@ class Agent(Protocol):
 _REGISTRY: Dict[str, str] = {
     "naive": "cropguard.agents.naive:NaiveAgent",
     "rule_based": "cropguard.agents.rule_based:RuleBasedAgent",
+    "llm_assisted": "cropguard.agents.llm_assisted:LlmAssistedAgent",
 }
 
 
