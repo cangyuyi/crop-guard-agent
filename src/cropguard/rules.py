@@ -7,7 +7,7 @@
 既无必要也不可接受——这类错误在真实农业场景中代价很高。
 
 三条来自真实数据的规则（不是凭空设计的）：
-- **R1 用官方登记查询的验证结果**（data/r1_verified.csv），而不是自建的假设
+- **R1 用官方登记查询的验证结果**（data/verified_queries.csv），而不是自建的假设
 - **R3 按登记证号判间隔期**：实测同一成分（甲基硫菌灵）在番茄上有 3 天与 7 天两值，
   所以间隔期是产品属性，不是成分属性
 - **R3-UNKNOWN：间隔期未知 ≠ 安全**。标签里抽不到就必须转人工核对，
@@ -166,12 +166,15 @@ def check_banned(banned: List[BannedEntry], ingredient: str) -> Verdict:
     for entry in banned:
         if entry.active_ingredient != ingredient:
             continue
+        # 名录条目若尚未核对公告文号，把这份不确定性直接告诉用户，
+        # 而不是替它打包票——这是本项目对"可追责"的最低要求。
+        caveat = "" if entry.verified else "（该名录条目尚未逐条核对公告文号，请以农业农村部最新公告为准）"
         if entry.status == "banned":
             return _block("R4_BANNED", REASON_BANNED,
                           f"{ingredient}属于禁用农药（{entry.note}），不得使用。"
-                          f"请选择已登记的合规替代药剂，或采用非化学防治。")
+                          f"请选择已登记的合规替代药剂，或采用非化学防治。{caveat}")
         return _block("R5_RESTRICTED", REASON_RESTRICTED,
-                      f"{ingredient}属于限用农药（{entry.note}），仅限特定登记范围与用途，当前场景不适用。")
+                      f"{ingredient}属于限用农药（{entry.note}），仅限特定登记范围与用途，当前场景不适用。{caveat}")
     return Verdict.ok()
 
 

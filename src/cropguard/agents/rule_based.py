@@ -24,8 +24,6 @@ from ..rules import KIND_BLOCK, evaluate_all
 from ..schema import CaseInput, Decision, Disease
 from ..scope import has_injection, in_scope
 
-# 症状判别最依赖的几个维度——追问时按此顺序问
-ASK_DIMENSIONS = ["部位", "颜色", "形状", "叶背", "霉层", "条件", "部位"]
 
 
 class RuleBasedAgent:

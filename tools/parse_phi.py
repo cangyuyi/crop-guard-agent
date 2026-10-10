@@ -91,17 +91,6 @@ def parse_rate(labels: List[str]) -> float:
     return round(hit / len(labels), 4)
 
 
-def multi_registration_conflict(phi_by_reg: List[tuple]) -> bool:
-    """同一成分在同一作物上的多个登记证号若间隔期不一致，返回 True。
-
-    **这是真实数据带来的发现**：甲基硫菌灵在番茄上，PD20111255 是 3 天、
-    PD20161283 是 7 天。所以间隔期**必须按产品（登记证号）判定，不能按成分判定**。
-    出现冲突时，系统不得给出单一数值，必须提示用户以手中产品标签为准。
-    """
-    values = {d for _, d in phi_by_reg if d is not None}
-    return len(values) > 1
-
-
 if __name__ == "__main__":
     import sys
 

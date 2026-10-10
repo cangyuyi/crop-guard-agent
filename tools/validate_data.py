@@ -28,7 +28,8 @@ def main() -> int:
     print(f"  登记记录              : {s['registrations']} 条")
     print(f"    其中安全间隔期已抽取 : {s['phi_known']} 条")
     print(f"    其中安全间隔期未知   : {s['phi_unknown']} 条（未知 ≠ 安全，须转人工核对标签）")
-    print(f"  禁限用名录            : {s['banned']} 条")
+    print(f"  禁限用名录            : {s['banned']} 条"
+          f"（其中未核对公告文号 {s['banned_unverified']} 条）")
     print(f"  R1 真值表             : {s['r1_facts']} 组（作物×成分）")
     print(f"    其中官方查询为「未登记」: {s['r1_not_registered']} 组")
     print()

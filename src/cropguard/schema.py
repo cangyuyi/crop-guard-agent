@@ -60,6 +60,12 @@ class BannedEntry:
     status: str  # banned | restricted
     note: str
     source: str
+    verified: bool = False
+    """是否已逐条核对过农业农村部公告文号。
+
+    当前全部为 False——名录方向性正确但未核对公告。规则命中时会把这个
+    不确定性直接写进给用户的说明里，而不是替它打包票。
+    """
 
 
 @dataclass(frozen=True)

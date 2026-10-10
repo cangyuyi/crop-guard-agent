@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
-from parse_phi import multi_registration_conflict, parse_phi, parse_rate  # noqa: E402
+from parse_phi import parse_phi, parse_rate  # noqa: E402
 
 
 class ParsePhiTest(unittest.TestCase):
@@ -61,21 +61,6 @@ class ParsePhiTest(unittest.TestCase):
 
     def test_parse_rate_empty(self):
         self.assertEqual(parse_rate([]), 0.0)
-
-
-class MultiRegistrationTest(unittest.TestCase):
-    def test_conflict_detected(self):
-        """真实情况：甲基硫菌灵在番茄上 3 天与 7 天并存 → 冲突。"""
-        self.assertTrue(multi_registration_conflict(
-            [("PD20111255", 3), ("PD20161283", 7)]))
-
-    def test_no_conflict_when_same(self):
-        self.assertFalse(multi_registration_conflict(
-            [("PD1", 7), ("PD2", 7)]))
-
-    def test_unknown_values_ignored(self):
-        """未知值不参与冲突判定，但也不代表一致。"""
-        self.assertFalse(multi_registration_conflict([("PD1", 7), ("PD2", None)]))
 
 
 if __name__ == "__main__":

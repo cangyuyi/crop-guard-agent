@@ -79,7 +79,8 @@ class CsvDataSource:
     def banned(self) -> List[BannedEntry]:
         return [
             BannedEntry(active_ingredient=r["active_ingredient"], status=r["status"],
-                        note=r["note"], source=r["source"])
+                        note=r["note"], source=r["source"],
+                        verified=r.get("verified", "").strip() == "是")
             for r in self._rows("banned.csv")
         ]
 
@@ -115,4 +116,5 @@ def audit_data(ds: DataSource) -> Dict[str, object]:
         "r1_not_registered": sum(1 for f in facts if not f.registered),
         "diseases": len(ds.diseases()),
         "banned": len(ds.banned()),
+        "banned_unverified": sum(1 for b in ds.banned() if not b.verified),
     }

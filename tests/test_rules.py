@@ -132,6 +132,18 @@ class RuleEngineTest(unittest.TestCase):
                 self.assertTrue(v.blocked)
                 self.assertEqual(v.reason, rules.REASON_BANNED)
 
+    def test_unverified_banned_entry_discloses_uncertainty(self):
+        """名录条目未核对公告文号时，说明里必须带提醒。
+
+        这条钉住的是"可追责"的底线：依据本身不确定时，必须把不确定性
+        告诉用户，而不是替它打包票。数据核对完成后把 verified 改成「是」，
+        本测试会失败——那时应当同时删掉这条断言。
+        """
+        v = self.evaluate("水稻", "甲胺磷")
+        self.assertTrue(v.blocked)
+        self.assertIn("未", v.detail)
+        self.assertIn("公告", v.detail)
+
     def test_restricted_blocked(self):
         v = self.evaluate("水稻", "氟虫腈")
         self.assertTrue(v.blocked)
