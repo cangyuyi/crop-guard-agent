@@ -129,7 +129,7 @@
 <main class="wrap">
 <header>
   <h1>作物病害诊断与用药合规 Agent</h1>
-  <p>从「能识别」到「敢负责」——证据不足时追问，用药建议上守合规红线。</p>
+  <p>「高风险场景下 LLM 系统怎么做到可证明安全」的落地实例——可判定的结论交给确定性规则，模型无权放行。</p>
 </header>
 
 <p class="notice">
@@ -187,6 +187,11 @@
   <p class="foot">
     <b>跑的是哪一个实现：</b>确定性规则实现（<code>rule_based</code>）。
     依赖模型的那条路径（<code>llm_assisted</code>）需要 API key，无法在浏览器里跑。
+    这个选择本身就是示例的一部分——<b>能持续测试的那个，才是守住安全边界的那个</b>。
+  </p>
+  <p class="foot">
+    📐 这套做法怎么搬到信贷、医疗、保险等其它高风险场景：
+    <a href="https://github.com/cangyuyi/crop-guard-agent/blob/main/docs/method.md" style="color:var(--accent)">docs/method.md</a>
   </p>
   <p class="foot">
     <b>因此你可能撞到两次已知的天花板。</b>点「番茄价格今年走势怎么样」会看到它<b>追问而不是拒答</b>——
