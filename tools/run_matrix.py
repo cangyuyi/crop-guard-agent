@@ -28,7 +28,8 @@ from run_eval import plan_run_id  # noqa: E402
 DATASETS = [
     ("dev", ROOT / "eval" / "cases.json", "开发集（用例与实现同源，分数会偏高）"),
     ("holdout", ROOT / "eval" / "holdout.json", "留出集 v1（已用于发现问题，不再充当验收）"),
-    ("holdout2", ROOT / "eval" / "holdout2.json", "留出集 v2"),
+    ("holdout2", ROOT / "eval" / "holdout2.json", "留出集 v2（已被修复过程看过，作为回归用）"),
+    ("holdout3", ROOT / "eval" / "holdout3.json", "留出集 v3（验收自审修复后的当前状态）"),
 ]
 ALL_AGENTS = ["naive", "rule_based", "llm_assisted"]
 METRICS = [

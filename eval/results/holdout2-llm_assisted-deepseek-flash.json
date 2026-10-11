@@ -1,5 +1,5 @@
 {
-  "run_id": "holdout2-llm_assisted",
+  "run_id": "holdout2-llm_assisted-deepseek-flash",
   "agent": "llm_assisted",
   "meta": {
     "dataset": "holdout2.json",
@@ -28,7 +28,8 @@
       "failures": [],
       "actual_reason": "",
       "candidates": [
-        "番茄叶霉病"
+        "番茄叶霉病",
+        "番茄晚疫病"
       ],
       "dose_given": false
     },
